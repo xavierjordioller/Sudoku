@@ -4,15 +4,17 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Stack;
 
-
 public class Sudoku {
 	Integer[][] sudokuArray = new Integer[9][9];
-	Stack<Point> history = new Stack<Point>();
-	int currentX = 0;
-	int currentY = 0;
+
+	Stack<Square> history = new Stack<Square>();
+
+	Square currentSquare = new Square(0,0);
 	
-	long startTime;
+	int currentK;
+	
 	public Sudoku(String path) {
+		// Lecture du fichier en entree
 		try(BufferedReader br = new BufferedReader(new FileReader(path))) {
 		    int y = 0;
 			for(String line; (line = br.readLine()) != null; ) {
@@ -25,101 +27,140 @@ public class Sudoku {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
+		// Initialisation des attributs de classe
+		currentK = 1;
+		history.push(new Square(currentSquare.getX(),currentSquare.getY()));
 	}
 	
-	// check if first cell is a 0
-	
-	public void solve(boolean exist) {
-		System.out.println("solve;x=" + currentX + ",y=" + currentY);
-		if(currentX == 8 && currentY == 8) {
-			return;
-			
-		}
-		history.push(new Point(currentX, currentY));
-		int i = 1;
-		if(exist) {
-			i = sudokuArray[currentY][currentX];
-			i++;
-		}
-		for(; i < 10; i++) {
-			if(isValid(currentX, currentY, i)) {
-				forward(i);
+	private boolean isComplete() {
+		Square nextSquare = currentSquare;
+		
+		int nextCurrentX = currentSquare.getX();
+		int nextCurrentY = currentSquare.getY();
+		nextCurrentY++;
+		
+		for(;nextCurrentX < 9;nextCurrentX++) {
+			for(nextCurrentY = 0;nextCurrentY < 9;nextCurrentY++) {
+				if(sudokuArray[nextCurrentX][nextCurrentY] == 0) {
+					return false;
+				}
 			}
-		}
-		backtrack();
-	}
-	
-	public void backtrack() {
-		sudokuArray[currentY][currentX] = 0;
-		if(history.empty()) {
-			return; // not able to solve it
-		}
-		history.pop();
-		Point previousPoint = history.pop();
-		currentX = previousPoint.x;
-		currentY = previousPoint.y;
-		solve(true);
-	}
-	
-	public void forward(int k) {
-		sudokuArray[currentY][currentX] = k;
-		Point nextPoint = nextAvailableCell();
-		
-		if(nextPoint == null) {
-			return; // succesful
-		}
-		currentX = nextPoint.x;
-		currentY = nextPoint.y;
-		solve(false);
-	}
-	
-	public Point nextAvailableCell() {
-		int nextCurrentX = currentX;
-		int nextCurrentY = currentY;
-		nextCurrentX++;
-		
-		for(;nextCurrentY < 9;nextCurrentY++) {
-			for(nextCurrentX = 0;nextCurrentX < 9;nextCurrentX++) {
-				if(sudokuArray[nextCurrentY][nextCurrentX] == 0) return new Point(nextCurrentX, nextCurrentY);
-			}
-		}
-		
-		return null;
-	}
-	
-	public boolean isValid(int x, int y, int k) {
-		return isValidInColumn(x, k) && isValidInRow(y, k) && isValidInBigCell(x, y, k);
-	}
-	
-	public boolean isValidInColumn(int x, int k) {
-		for(int y = 0; y < 9; y++) {
-			if(sudokuArray[y][x] == k) return false;
 		}
 		return true;
 	}
 	
-	public boolean isValidInRow(int y, int k) {
+	
+	public Square getNextSquare() {
+		Square nextSquare = currentSquare;
+		
+		int nextCurrentX = currentSquare.getX();
+		int nextCurrentY = currentSquare.getY();
+		nextCurrentY++;
+		
+		for(;nextCurrentX < 9;nextCurrentX++) {
+			for(nextCurrentY = 0;nextCurrentY < 9;nextCurrentY++) {
+				if(sudokuArray[nextCurrentX][nextCurrentY] == 0) {
+					nextSquare.setX(nextCurrentX);
+					nextSquare.setY(nextCurrentY);
+					return nextSquare;
+				}
+			}
+		}
+		return nextSquare;
+	}
+	
+	private void setNextSquare() {
+		currentSquare = getNextSquare();
+	}
+	
+	public void setPreviousSquare() {
+		currentSquare = history.pop();
+	}
+	
+	public void setPreviousSquareNumber() {
+		currentK = sudokuArray[currentSquare.getX()][currentSquare.getY()] + 1;
+	}
+	
+	private boolean isValid() {
+		return isValidColumn() && isValidRow() && isValidRegion();
+	}
+	
+	private boolean isValidColumn() {
 		for(int x = 0; x < 9; x++) {
-			if(sudokuArray[y][x] == k) return false;
+			if(sudokuArray[x][currentSquare.getY()] == currentK)
+				return false;
+		}
+		return true;
+	}
+
+	private boolean isValidRow() {
+		for(int y = 0; y < 9; y++) {
+			if(sudokuArray[currentSquare.getX()][y] == currentK)
+				return false;
 		}
 		return true;
 	}
 	
-	public boolean isValidInBigCell(int x, int y, int k) {
+	private boolean isValidRegion() {
 		for(int i = 0; i < 3; i++) {
 			for(int j = 0; j < 3; j++) {
-				if(sudokuArray[((y/3) * 3 ) + i][((x/3) * 3 ) + j] == k) return false;
+				if(sudokuArray[((currentSquare.getX()/3) * 3 ) + i][((currentSquare.getY()/3) * 3 ) + j] == currentK)
+					return false;
 			}
 		}
 		return true;
 	}
+
+
+
+	/**
+	 * Methode recursive de resolution du Sudoku
+	 * 
+	 * @return
+	 */
+	public boolean solve() {
+				
+		// 1ere condition d'arret : La solution est complete
+		if (isComplete()) {
+			return true;
+		}
+		
+		// 2eme condition d'arret : On n'a pas de solution
+		else if(history.isEmpty()) {
+			return false;
+		}
+		
+		// Si aucun k ne peut etre place dans la caise courrante, on reviens en arriere
+		else if (currentK > 9){
+			sudokuArray[currentSquare.getX()][currentSquare.getY()] = 0;
+			setPreviousSquare();
+			setPreviousSquareNumber();
+			return solve();
+		}
+		
+		// Si currentK peut etre place dans la caise courrante, on passe a la caise suivante
+		else if (isValid()) {
+			sudokuArray[currentSquare.getX()][currentSquare.getY()] = currentK;
+			history.push(new Square(currentSquare.getX(),currentSquare.getY()));
+			setNextSquare();
+			currentK = 1;
+			return solve();
+		}
+		
+		// Si currentK < 9  ne peut pas etre place dans la caise courrante, on essaie avec currentK++
+		else {
+			currentK++;
+			return solve();
+		}
+		
+	}
+
+
+
+
+
+
+
+
 }
-
-
-/*
-long startTime = System.nanoTime();
-System.out.println();
-long endTime = System.nanoTime();
-
-long duration = (endTime - startTime);  //divide by 1000000 to get milliseconds.
-*/
