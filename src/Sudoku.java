@@ -10,8 +10,9 @@ public class Sudoku {
 	Stack<Point> history = new Stack<Point>();
 	int currentX = 0;
 	int currentY = 0;
-	
 	long startTime;
+	
+
 	public Sudoku(String path) {
 		try(BufferedReader br = new BufferedReader(new FileReader(path))) {
 		    int y = 0;
@@ -25,16 +26,12 @@ public class Sudoku {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	 startTime = System.nanoTime();
 	}
 	
 	// check if first cell is a 0
 	
 	public void solve(boolean exist) {
-		System.out.println("solve;x=" + currentX + ",y=" + currentY);
-		if(currentX == 8 && currentY == 8) {
-			return;
-			
-		}
 		history.push(new Point(currentX, currentY));
 		int i = 1;
 		if(exist) {
@@ -55,13 +52,24 @@ public class Sudoku {
 			return; // not able to solve it
 		}
 		history.pop();
-		Point previousPoint = history.pop();
+	/*	if(history.size() == 0) {
+			System.out.println("hello");
+		}*/
+		Point previousPoint = history.peek();
 		currentX = previousPoint.x;
 		currentY = previousPoint.y;
-		solve(true);
 	}
 	
 	public void forward(int k) {
+		
+		if(currentX == 8 && currentY == 8)
+		{
+			long endTime = System.nanoTime();
+			double duration = (endTime - startTime) / 1000000000.0;  //divide by 1000000 to get milliseconds.
+			System.out.println(duration);
+			System.out.println("Found it");
+			
+		}
 		sudokuArray[currentY][currentX] = k;
 		Point nextPoint = nextAvailableCell();
 		
