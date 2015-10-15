@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Stack;
 
 public class Sudoku {
@@ -13,10 +14,11 @@ public class Sudoku {
 
 	Map<Point, List<Integer>> validPositions = new HashMap<Point, List<Integer>>();
 	Stack<Point> history = new Stack<Point>();
-	int currentX = 2;
-	int currentY = 0;
+	int currentX = 0; // colonne
+	int currentY = 0; // ligne
 	long startTime;
-	
+	int globalTesting = 0;
+
 	public void printMap() {
 		System.out.println();
 		System.out.println();
@@ -24,25 +26,18 @@ public class Sudoku {
 		System.out.println();
 		System.out.println();
 		System.out.println();
-		for(int i = 0; i < 9; i++) {
-			if(i == 3 || i == 6) {
+		for (int i = 0; i < 9; i++) {
+			if (i == 3 || i == 6) {
 				System.out.println();
 			}
-			for(int j = 0; j < 9; j++) {
-				if(j == 3 || j == 6) {
+			for (int j = 0; j < 9; j++) {
+				if (j == 3 || j == 6) {
 					System.out.print(" ");
 				}
 				System.out.print(String.valueOf(sudokuArray[i][j]));
 			}
 			System.out.println();
 		}
-	/*	try {
-		//	System.in.read();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}*/
-		
 	}
 
 	public Sudoku(String path) {
@@ -59,7 +54,9 @@ public class Sudoku {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
 
+	public void generateValidPosition() {
 		for (int y = 0; y < 9; y++) {
 			for (int x = 0; x < 9; x++) {
 				if (sudokuArray[y][x] != 0)
@@ -87,13 +84,12 @@ public class Sudoku {
 	// check if first cell is a 0
 
 	public void solve(boolean exist) {
-		history.push(new Point(currentX, currentY));
-		/*
-		 * int i = 1; if (exist) { i = sudokuArray[currentY][currentX]; i++; }
-		 */
+		history.push(new Point(currentY, currentX));
+
 		for (int i : validPositions.get(new Point(currentY, currentX))) {
 			forward(i);
 		}
+
 		backtrack();
 	}
 
@@ -102,20 +98,22 @@ public class Sudoku {
 		if (history.empty()) {
 			return; // not able to solve it
 		}
+
 		history.pop();
-		
-		if (history.size() == 1) {
-		//	System.out.println("hello");
+
+		if (history.size() > 0) {
+			Point previousPoint = history.peek();
+			currentX = previousPoint.y;
+			currentY = previousPoint.x;
+		} else {
+			currentX = 0;
+			currentY = 0;
 		}
 
-		Point previousPoint = history.peek();
-		currentX = previousPoint.x;
-		currentY = previousPoint.y;
-		
 		int temp = sudokuArray[currentY][currentX];
 		sudokuArray[currentY][currentX] = 0;
-		
-		updateMap(false, temp);
+
+		updateMapBackward(temp);
 	}
 
 	public void forward(int k) {
@@ -129,16 +127,16 @@ public class Sudoku {
 			System.out.println("Found it");
 
 		}
-		updateMap(true, k);
+		validPositions.toString();
+		updateMapForward(k);
 		sudokuArray[currentY][currentX] = k;
 		Point nextPoint = nextAvailableCell();
 
 		if (nextPoint == null) {
 			return; // succesful
 		}
-		currentX = nextPoint.x;
-		currentY = nextPoint.y;
-		//printMap();
+		currentX = nextPoint.y;
+		currentY = nextPoint.x;
 		solve(false);
 	}
 
@@ -148,118 +146,260 @@ public class Sudoku {
 		nextCurrentX++;
 
 		for (; nextCurrentY < 9; nextCurrentY++) {
-			for (nextCurrentX = 0; nextCurrentX < 9; nextCurrentX++) {
+			for (; nextCurrentX < 9; nextCurrentX++) {
 				if (sudokuArray[nextCurrentY][nextCurrentX] == 0)
-					return new Point(nextCurrentX, nextCurrentY);
+					return new Point(nextCurrentY, nextCurrentX);
 			}
+			nextCurrentX = 0;
 		}
 
 		return null;
 	}
 
 	public boolean isValid(int x, int y, int k) {
-		return isValidInColumn(x, k) && isValidInRow(y, k)
-				&& isValidInBigCell(x, y, k);
-	}
-
-	public boolean isValidInColumn(int x, int k) {
-		for (int y = 0; y < 9; y++) {
-			if (sudokuArray[y][x] == k)
+		int rowNb = (y / 3) * 3;
+		int colNb = (x / 3) * 3;
+		for (int i = 0; i < 9; i++) {
+			if (sudokuArray[y][i] == k)
+				return false;
+			if (sudokuArray[i][x] == k)
+				return false;
+			if (sudokuArray[rowNb + (i % 3)][colNb + (i / 3)] == k)
 				return false;
 		}
 		return true;
 	}
 
-	public boolean isValidInRow(int y, int k) {
-		for (int x = 0; x < 9; x++) {
-			if (sudokuArray[y][x] == k)
-				return false;
-		}
-		return true;
+	public void updateMap(int x, int y, int k) {
+
 	}
 
-	public boolean isValidInBigCell(int x, int y, int k) {
-		for (int i = 0; i < 3; i++) {
-			for (int j = 0; j < 3; j++) {
-				if (sudokuArray[((y / 3) * 3) + i][((x / 3) * 3) + j] == k)
-					return false;
+	public void updateMapForward(int k) {
+		// colonne
+		for (int i = (currentY + 1); i < 9; i++) {
+			Point point = new Point(i, currentX);
+			if (validPositions.containsKey(point)) {
+				validPositions.get(point).remove(new Integer(k));
 			}
 		}
-		return true;
+
+		// ligne
+		for (int i = (currentX + 1); i < 9; i++) {
+			Point point = new Point(currentY, i);
+			if (validPositions.containsKey(point)) {
+				validPositions.get(new Point(currentY, i)).remove(
+						new Integer(k));
+			}
+		}
+		int rx = (currentX) / 3 + 1;
+		int ry = (currentY) / 3 + 1;
+		int j = currentX + 1;
+		for (int i = currentY; i < 3 * ry; i++) {
+			for (; j < 3 * rx; j++) {
+				Point pointInGrid = new Point(i, j);
+				if (validPositions.containsKey(pointInGrid)) {
+					validPositions.get(pointInGrid).remove(new Integer(k));
+				}
+
+			}
+			j = (rx - 1) * 3;
+		}
 	}
 
-	public void updateMap(boolean forward, int k) {
-		if (forward) {
-			// colonne
-			for (int i = (currentY + 1); i < 9; i++) {
-				if (validPositions.containsKey(new Point(i, currentX))) {
-					validPositions.get(new Point(i, currentX)).remove(
-							new Integer(k));
-				}
+	public void updateMapBackward(int k) {
+		for (int i = (currentY + 1); i < 9; i++) {
+			Point point = new Point(i, currentX);
+			if (validPositions.containsKey(point)) {
+				if (isValid(currentX, i, k))
+					validPositions.get(point).add(new Integer(k));
 			}
+		}
 
-			// ligne
-			for (int i = (currentX + 1); i < 9; i++) {
-				if (validPositions.containsKey(new Point(currentY, i))) {
-					validPositions.get(new Point(currentY, i)).remove(
-							new Integer(k));
-				}
+		for (int i = (currentX + 1); i < 9; i++) {
+			Point point = new Point(currentY, i);
+			if (validPositions.containsKey(point)) {
+				if (isValid(i, currentY, k))
+					validPositions.get(point).add(new Integer(k));
 			}
-			int rx = (currentX) / 3 + 1;
-			int ry = (currentY) / 3 + 1;
-			int j = currentX + 1;
-			for (int i = currentY; i < 3 * ry; i++) {
-				for (; j < 3 * rx; j++) {
-					Point pointInGrid = new Point(i, j);
-					if (validPositions.containsKey(pointInGrid)) {
-						validPositions.get(pointInGrid).remove(new Integer(k));
-					}
-
-				}
-				j = (rx - 1) * 3;
-			}
-		} else {
-			for (int i = (currentY + 1); i < 9; i++) {
-				if (validPositions.containsKey(new Point(i, currentX))) {
-					if(isValid(currentX,i,k))
-					validPositions.get(new Point(i, currentX)).add(
-							new Integer(k));
-				}
-			}
-
-			for (int i = (currentX + 1); i < 9; i++) {
-				if (validPositions.containsKey(new Point(currentY, i))) {
-					if(isValid(i,currentY,k))
-					validPositions.get(new Point(currentY, i)).add(
-							new Integer(k));
-				}
-			}
-			int rx = (currentX) / 3 + 1;
-			int ry = (currentY) / 3 + 1;
-			int j = currentX + 1;
-			for (int i = currentY; i < 3 * ry; i++) {
-				for (; j < 3 * rx; j++) {
-					Point pointInGrid = new Point(i, j);
-					if (validPositions.containsKey(pointInGrid)) {
-						if (!validPositions.get(pointInGrid).contains(
-								new Integer(k)))
-							if(isValid(j,i,k))
+		}
+		int rx = (currentX) / 3 + 1;
+		int ry = (currentY) / 3 + 1;
+		int j = currentX + 1;
+		for (int i = currentY; i < 3 * ry; i++) {
+			for (; j < 3 * rx; j++) {
+				Point pointInGrid = new Point(i, j);
+				if (validPositions.containsKey(pointInGrid)) {
+					if (!validPositions.get(pointInGrid).contains(
+							new Integer(k)))
+						if (isValid(j, i, k))
 							validPositions.get(pointInGrid).add(new Integer(k));
-					
 
+				}
+			}
+			j = (rx - 1) * 3;
+		}
+	}
+
+	// column
+	public void detectHiddenSingles() {
+		int numberDetected = 0;
+		for (int j = 1; j <= 9; j++) {
+			for (int y = 0; y < 9; y++) {
+				Point pointCol = null;
+				int numberCol = -1;
+
+				Point pointRow = null;
+				int numberRow = -1;
+
+				Point pointBox = null;
+				int numberBox = -1;
+
+				for (int x = 0; x < 9; x++) {
+					if (validPositions.get(new Point(y, x)) == null)
+						continue;
+					if (validPositions.get(new Point(y, x)).contains(j)) {
+						if (numberCol > -1) {
+							numberCol = -1;
+							break;
+						}
+
+						pointCol = new Point(y, x);
+						numberCol = j;
+					}
+				}
+
+				for (int x = 0; x < 9; x++) {
+					if (validPositions.get(new Point(x, y)) == null)
+						continue;
+					if (validPositions.get(new Point(x, y)).contains(j)) {
+						if (numberRow > -1) {
+							numberRow = -1;
+							break;
+						}
+
+						pointRow = new Point(x, y);
+						numberRow = j;
+					}
+				}
+
+				for (int x = 0; x < 9; x++) {
+					Point point = new Point((y / 3) * 3 + (x / 3), x % 3
+							+ ((y % 3) * 3));
+					if (validPositions.get(point) == null)
+						continue;
+					if (validPositions.get(point).contains(j)) {
+						if (numberBox > -1) {
+							numberBox = -1;
+							break;
+						}
+
+						pointBox = point;
+						numberBox = j;
+					}
+				}
+
+				if (numberCol != -1) {
+					numberDetected++;
+					sudokuArray[pointCol.x][pointCol.y] = numberCol;
+					validPositions.clear();
+					generateValidPosition();
+				}
+
+				if (numberRow != -1) {
+					numberDetected++;
+					sudokuArray[pointRow.x][pointRow.y] = numberRow;
+					validPositions.clear();
+					generateValidPosition();
+				}
+
+				if (numberBox != -1) {
+					numberDetected++;
+					sudokuArray[pointBox.x][pointBox.y] = numberBox;
+					validPositions.clear();
+					generateValidPosition();
+				}
+			}
+		}
+
+		// System.out.println("Col Hidden single detected : " + numberDetected);
+	}
+
+	public void onlyOnePossibility() {
+		int numberDetected = 0;
+		for (int y = 0; y < 9; y++) {
+			for (int x = 0; x < 9; x++) {
+				if (validPositions.get(new Point(y, x)) == null)
+					continue;
+				if (validPositions.get(new Point(y, x)).size() > 1)
+					continue;
+				sudokuArray[y][x] = validPositions.get(new Point(y, x)).get(0);
+				validPositions.clear();
+				generateValidPosition();
+				numberDetected++;
+			}
+		}
+
+		 //System.out.println("Col Hidden single detected : " + numberDetected);
+	}
+
+	public void lockedCandidate() {
+		// line
+
+		// it works in the box line and column
+
+		// this technique removes hypothesis ( could be use later on with
+		// finding hidden singles or nakes singles
+		
+		int removedHypothesis = 0;
+
+		for (int i = 0; i < 27; i++) {
+			List<Integer> testedNumber = new ArrayList<Integer>();
+			for (int k = 0; k < 3; k++) {
+				Point point = new Point(i / 3, (i % 3) * 3 + k); // pointToTest
+				if (validPositions.get(point) != null) {
+					for (int hypothesisNumber : validPositions.get(point)) {
+						testedNumber.add(hypothesisNumber);
+
+						boolean removeOthers = true;
+						int rowNb = (point.x / 3) * 3;
+						int colNb = (point.y / 3) * 3;
+						for (int number = 0; number < 9; number++) {
+							if (rowNb + (number % 3) == point.x)
+								continue;
+
+							if (validPositions.get(new Point(rowNb
+									+ (number % 3), colNb + (number / 3))) == null)
+								continue;
+							if (validPositions.get(
+									new Point(rowNb + (number % 3), colNb
+											+ (number / 3))).contains(
+									hypothesisNumber)) {
+								removeOthers = false;
+								break;
+							}
+						}
+
+						// number x is only possible in this row...
+						if (removeOthers) {
+							removedHypothesis++;
+							for (int number = 0; number < 9; number++) {
+
+								if (point.y / 3 == number / 3)
+									continue;
+								if (validPositions.get(new Point(point.x,
+										number)) == null)
+									continue;
+								validPositions.get(new Point(point.x, number))
+										.remove(new Integer(hypothesisNumber));
+							}
+						}
 					}
 
 				}
-				j = (rx - 1) * 3;
+
 			}
 		}
+		
+		//System.out.println("Removed hypothesis: " + removedHypothesis);
 	}
 }
-
-/*
- * long startTime = System.nanoTime(); System.out.println(); long endTime =
- * System.nanoTime();
- * 
- * long duration = (endTime - startTime); //divide by 1000000 to get
- * milliseconds.
- */
