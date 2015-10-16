@@ -19,6 +19,7 @@ public class Sudoku {
 	int currentY = 0; // ligne
 	long startTime;
 	int nbPlaced = 0;
+	long callNb = 0;
 
 	public void printMap(int[][] sudokuArray) {
 		System.out.println();
@@ -65,7 +66,7 @@ public class Sudoku {
 
 	public Map<Point, List<Integer>> generateValidPosition(int[][] sudokuArray) {
 		Map<Point, List<Integer>> validPositions = new HashMap<Point, List<Integer>>();
-
+		callNb++;
 		for (int y = 0; y < 9; y++) {
 			for (int x = 0; x < 9; x++) {
 				if (sudokuArray[y][x] != 0)
@@ -88,15 +89,26 @@ public class Sudoku {
 		}
 		return validPositions;
 	}
+	
+	public long calculateNbPossibilities(Map<Point, List<Integer>> validPositions) {
+		long nbPossibilities = 0;
+		
+		for(Entry<Point, List<Integer>> entry : validPositions.entrySet()) {
+			nbPossibilities += entry.getValue().size();
+		}
+		
+		return nbPossibilities;
+	}
 
 	// check if first cell is a 0
 
 	public void solve(int[][] sudokuArray, boolean exist, Map<Point, List<Integer>> validPositions) {
 		history.push(new Point(currentY, currentX));
-
+		nbPlaced++;
 		//lockedCandidate(validPositions); // will need to write the code for this to work ...
 		validPositions = detectHiddenSingles(sudokuArray, validPositions);
 		validPositions = onlyOnePossibility(sudokuArray, validPositions);
+		
 		if (validPositions != null) {
 			if (validPositions.get(new Point(currentY, currentX)) != null) {
 				if (validPositions.get(new Point(currentY, currentX)).size() > 0) {
@@ -145,6 +157,8 @@ public class Sudoku {
 
 		if (k != -1) {
 			updateMapForward(k, validPositions);
+			/*validPositions.clear();
+			validPositions = generateValidPosition(sudokuArray);*/
 			sudokuArray[currentY][currentX] = k;
 		}
 		Point nextPoint = nextAvailableCell(sudokuArray);
@@ -155,7 +169,6 @@ public class Sudoku {
 			double duration = (endTime - startTime) / 1000000000.0; // divide by
 																	// 1000000
 																	// to get
-																	// milliseconds.
 			System.out.println(duration);
 			System.out.println("Found it");
 			printMap(sudokuArray);
@@ -169,6 +182,7 @@ public class Sudoku {
 		}
 		currentX = nextPoint.y;
 		currentY = nextPoint.x;
+		//printMap(sudokuArray);
 		solve(sudokuArray, false, validPositions);
 	}
 
@@ -245,6 +259,68 @@ public class Sudoku {
 			j = (rx - 1) * 3;
 		}
 	}
+	
+	public void compareValidPositions(Map<Point, List<Integer>> validPositions1, Map<Point, List<Integer>> validPositions2) {
+		for(int y = 0; y < 9; y++) {
+			for(int x = 0; x < 9; x++) {
+				if(validPositions1.get(new Point(y, x)) != null && validPositions2.get(new Point(y, x)) == null) {
+					if(validPositions1.get(new Point(y, x)).size() > 0) {
+						System.out.println("wow");
+					}
+				}
+				else if(validPositions1.get(new Point(y, x)) == null && validPositions2.get(new Point(y, x)) != null) {
+					if(validPositions2.get(new Point(y, x)).size() > 0) {
+						System.out.println("wow");
+					}
+				}
+				else if(validPositions1.get(new Point(y, x)) == null && validPositions2.get(new Point(y, x)) == null) {
+					
+				}
+				else if(validPositions1.get(new Point(y, x)).size() != validPositions2.get(new Point(y, x)).size()) {
+					System.out.println("1: " + validPositions1.get(new Point(y, x)).size());
+					System.out.println("2: " + validPositions2.get(new Point(y, x)).size());
+				}
+				
+			}
+		}
+	}
+	
+	public void updateMapPoint(int[][] sudokuArray, int x, int y, int k, Map<Point, List<Integer>> validPositions) {
+		validPositions.remove(new Point(y, x));
+		// colonne
+		callNb++;
+				for (int i = 0; i < 9; i++) {
+				//	if(sudokuArray[i][x] > 0) continue;
+					Point point = new Point(i, x);
+					if (validPositions.get(point) != null) {
+						validPositions.get(point).remove(new Integer(k));
+					}
+				}
+
+				// ligne
+				for (int i = 0; i < 9; i++) {
+				//	if(sudokuArray[y][i] > 0) continue;
+					Point point = new Point(y, i);
+					if (validPositions.get(point) != null) {
+						validPositions.get(point).remove(new Integer(k));
+					}
+				}
+				int rx = (x) / 3 + 1;
+				int ry = (y) / 3 + 1;
+				for (int i = ry*3-3; i < 3 * ry; i++) {
+					for (int j = rx * 3 - 3; j < 3 * rx; j++) {
+			//			if(sudokuArray[i][j] > 0) continue;
+					/*	System.out.println("The point: y: " + y + ", x: " + x);
+						System.out.println("y: " + i + ", x: " + j);*/
+						
+						Point pointInGrid = new Point(i, j);
+						if (validPositions.get(pointInGrid) != null) {
+							validPositions.get(pointInGrid).remove(new Integer(k));
+						}
+
+					}
+				}
+	}
 
 	// column
 	public Map<Point, List<Integer>> detectHiddenSingles(int[][] sudokuArray, Map<Point, List<Integer>> validPositions) {
@@ -261,29 +337,31 @@ public class Sudoku {
 				int numberBox = -1;
 
 				for (int x = 0; x < 9; x++) {
-					if (validPositions.get(new Point(y, x)) == null)
+					Point point = new Point(y, x);
+					if (validPositions.get(point) == null)
 						continue;
-					if (validPositions.get(new Point(y, x)).contains(j)) {
+					if (validPositions.get(point).contains(j)) {
 						if (numberCol > -1) {
 							numberCol = -1;
 							break;
 						}
 
-						pointCol = new Point(y, x);
+						pointCol = point;
 						numberCol = j;
 					}
 				}
 
 				for (int x = 0; x < 9; x++) {
-					if (validPositions.get(new Point(x, y)) == null)
+					Point point = new Point(x, y);
+					if (validPositions.get(point) == null)
 						continue;
-					if (validPositions.get(new Point(x, y)).contains(j)) {
+					if (validPositions.get(point).contains(j)) {
 						if (numberRow > -1) {
 							numberRow = -1;
 							break;
 						}
 
-						pointRow = new Point(x, y);
+						pointRow = point;
 						numberRow = j;
 					}
 				}
@@ -306,22 +384,19 @@ public class Sudoku {
 				if (numberCol != -1) {
 					numberDetected++;
 					sudokuArray[pointCol.x][pointCol.y] = numberCol;
-					validPositions.clear();
-					validPositions = generateValidPosition(sudokuArray);
+					updateMapPoint(sudokuArray, pointCol.y, pointCol.x, numberCol, validPositions);
 				}
 
 				if (numberRow != -1) {
 					numberDetected++;
 					sudokuArray[pointRow.x][pointRow.y] = numberRow;
-					validPositions.clear();
-					validPositions = generateValidPosition(sudokuArray);
+					updateMapPoint(sudokuArray, pointRow.y, pointRow.x, numberRow, validPositions);
 				}
 
 				if (numberBox != -1) {
 					numberDetected++;
 					sudokuArray[pointBox.x][pointBox.y] = numberBox;
-					validPositions.clear();
-					validPositions = generateValidPosition(sudokuArray);
+					updateMapPoint(sudokuArray, pointBox.y, pointBox.x, numberBox, validPositions);
 				}
 			}
 		}
@@ -339,13 +414,15 @@ public class Sudoku {
 					continue;
 				if (validPositions.get(new Point(y, x)).size() > 1)
 					continue;
+				
+				int number = 0;
 				try {
-					sudokuArray[y][x] = validPositions.get(new Point(y, x)).get(0);
+				    number = validPositions.get(new Point(y, x)).get(0);
+					sudokuArray[y][x] = number;
 				} catch (Exception exception) {
 					return null; // backtracking
 				}
-				validPositions.clear();
-				validPositions = generateValidPosition(sudokuArray);
+				updateMapPoint(sudokuArray, x, y, number, validPositions);
 				numberDetected++;
 			}
 		}
