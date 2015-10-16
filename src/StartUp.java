@@ -13,5 +13,25 @@ public class StartUp {
 		// work because it generate it each time.
 		int[][] sudokuArray = sudoku.readBoard("C:/Users/Mathieu/Documents/testing/sudoku.txt");
 		sudoku.solve(sudokuArray, false, sudoku.generateValidPosition(sudokuArray));
+		int[] bitToDecimal = {
+				1,
+				2,
+				4,
+				8,
+				16,
+				32,
+				64,
+				128,
+				256
+		};
+		
+		
+		int testing = 394;
+		
+		
+		testing &= ~1;
+		System.out.println(testing);
+		
+		
 	}
 }
