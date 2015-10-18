@@ -1,3 +1,6 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Arrays;
@@ -18,7 +21,17 @@ public class StartUp {
 		
 		
 		sudoku.reset();
-		int[][] sudokuArray = sudoku.readBoard("C:/Users/Mathieu/Documents/testing/sudoku.txt");
+		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        System.out.println("Enter the path of your sudoku file");
+        String path = null;
+        try {
+			 path = reader.readLine();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		int[][] sudokuArray = sudoku.readBoard(path);
+		
+		// "C:/Users/Mathieu/Documents/testing/sudoku.txt"
 		sudoku.startTimer();
 		sudoku.solve(sudokuArray, sudoku.generateValidPosition(sudokuArray));
 		BigDecimal duration = new BigDecimal(sudoku.getDuration());
