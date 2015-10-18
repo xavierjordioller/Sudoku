@@ -7,25 +7,24 @@ import java.util.List;
 import java.util.Stack;
 
 public class Sudoku {
-	// Integer[][] sudokuArray = new Integer[9][9];
-
-	// Map<Point, List<Integer>> validPositions = new HashMap<Point,
-	// List<Integer>>();
 	Stack<Point> history = new Stack<Point>();
 	int currentX = 0; // colonne
 	int currentY = 0; // ligne
-	long startTime;
-	int nbPlaced = 0;
-	long callNb = 0;
-
+	long startTime = 0;
+	double duration = 0;
 	int[] bitToDecimal = { 1, 2, 4, 8, 16, 32, 64, 128, 256 };
+	int[][] finalMap;
+	boolean finish = false;
+	
+	public void reset() {
+		currentX = 0;
+		currentY = 0;
+		history.clear();
+		finish = false;
+		finalMap = null;
+	}
 
 	public void printMap(int[][] sudokuArray) {
-		System.out.println();
-		System.out.println();
-		System.out.println();
-		System.out.println();
-		System.out.println();
 		System.out.println();
 		for (int i = 0; i < 9; i++) {
 			if (i == 3 || i == 6) {
@@ -65,7 +64,7 @@ public class Sudoku {
 
 	public int[][] generateValidPosition(int[][] sudokuArray) {
 		int[][] validPositions = new int[9][9];
-		callNb++;
+
 		for (int y = 0; y < 9; y++) {
 			for (int x = 0; x < 9; x++) {
 				if (sudokuArray[y][x] != 0)
@@ -89,11 +88,9 @@ public class Sudoku {
 
 	// check if first cell is a 0
 
-	public void solve(int[][] sudokuArray, boolean exist, int[][] validPositions) {
+	public void solve(int[][] sudokuArray, int[][] validPositions) {
 		history.push(new Point(currentY, currentX));
-		nbPlaced++;
-		// lockedCandidate(validPositions); // will need to write the code for
-		// this to work ...
+
 		boolean changed = true;
 		boolean redo = true;
 
@@ -124,32 +121,35 @@ public class Sudoku {
 					for (int i = 1; i <= 9; i++) {
 						if (getByte(validPositions[currentY][currentX], i) == 1) {
 							forward(copyArray(sudokuArray), i, copyArray(validPositions));
+							if(finish) return;
 						}
 					}
 				}
 			} else {
-				if (sudokuArray[currentY][currentX] > 0)
+				if (sudokuArray[currentY][currentX] > 0) {
 					forward(copyArray(sudokuArray), -1, copyArray(validPositions));
+					if(finish) return;
+				}
 			}
 		}
 		backtrack();
 	}
 
+	public int[][] getFinalMap() {
+		return finalMap;
+	}
 	public void backtrack() {
-		if (history.empty()) {
-			return; // not able to solve it
-		}
-
-		if (history.size() == 1) {
-			System.out.println("testing");
-		}
-
 		history.pop();
+		
+		if (history.size() == 0) {
+			if(finalMap == null)
+				stopTimer();
+			return;
+		}
 
 		Point previousPoint = history.peek();
 		currentX = previousPoint.y;
 		currentY = previousPoint.x;
-		// updateMapBackward(temp);
 	}
 
 	public int[][] copyArray(int[][] sudokuArray) {
@@ -162,37 +162,26 @@ public class Sudoku {
 	}
 
 	public void forward(int[][] sudokuArray, int k, int[][] validPositions) {
-
 		if (k != -1) {
 			updateMapForward(k, validPositions);
-			/*
-			 * validPositions.clear(); validPositions =
-			 * generateValidPosition(sudokuArray);
-			 */
 			sudokuArray[currentY][currentX] = k;
 		}
 		Point nextPoint = nextAvailableCell(sudokuArray);
 
 		if (nextPoint == null) {
-			long endTime = System.nanoTime();
-
-			double duration = (endTime - startTime) / 1000000000.0; // divide by
-																	// 1000000
-																	// to get
-			System.out.println(duration);
-			System.out.println("Found it");
-			printMap(sudokuArray);
-			try {
-				System.in.read();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			return; // succesful
+			stopTimer();
+			finalMap = sudokuArray;
+			finish = true;
+			return;
 		}
 		currentX = nextPoint.y;
 		currentY = nextPoint.x;
-		solve(sudokuArray, false, validPositions);
+		solve(sudokuArray, validPositions);
+	}
+	
+	public void stopTimer() {
+		long endTime = System.nanoTime();
+	    duration = (endTime - startTime) / 1000000000.0; // divide by
 	}
 
 	public void startTimer() {
@@ -256,7 +245,7 @@ public class Sudoku {
 	public void updateMapPoint(int[][] sudokuArray, int x, int y, int k, int[][] validPositions) {
 		validPositions[y][x] = 0;
 		// colonne
-		callNb++;
+
 		for (int i = 0; i < 9; i++) {
 			validPositions[i][x] &= ~bitToDecimal[k - 1];
 		}
@@ -273,11 +262,14 @@ public class Sudoku {
 			}
 		}
 	}
+	
+	public double getDuration() {
+		return duration;
+	}
 
 	// column
 	public boolean detectHiddenSingles(int[][] sudokuArray, int[][] validPositions) {
 		boolean changed = false;
-		int numberDetected = 0;
 		for (int j = 1; j <= 9; j++) {
 			for (int y = 0; y < 9; y++) {
 				int x1 = 0;
@@ -303,7 +295,6 @@ public class Sudoku {
 						}
 						x1 = x;
 						y1 = y;
-						// pointCol = point;
 						numberCol = j;
 					}
 				}
@@ -319,7 +310,6 @@ public class Sudoku {
 							}
 							x2 = y;
 							y2 = x;
-							// pointRow = point;
 							numberRow = j;
 						}
 					}
@@ -338,42 +328,35 @@ public class Sudoku {
 							}
 							x3 = i;
 							y3 = k;
-							// pointBox = point;
 							numberBox = j;
 						}
 					}
 				}
 				if (numberCol != -1) {
-					numberDetected++;
 					sudokuArray[y1][x1] = numberCol;
 					updateMapPoint(sudokuArray, x1, y1, numberCol, validPositions);
 					changed = true;
 				}
 
 				if (numberRow != -1) {
-					numberDetected++;
 					sudokuArray[y2][x2] = numberRow;
 					updateMapPoint(sudokuArray, x2, y2, numberRow, validPositions);
 					changed = true;
 				}
 
 				if (numberBox != -1) {
-					numberDetected++;
 					sudokuArray[y3][x3] = numberBox;
 					updateMapPoint(sudokuArray, x3, y3, numberBox, validPositions);
 					changed = true;
 				}
 			}
 		}
-
-		// System.out.println("Col Hidden single detected : " + numberDetected);
-
+		
 		return changed;
 	}
 
 	public boolean onlyOnePossibility(int[][] sudokuArray, int[][] validPositions) {
 		boolean changed = false;
-		int numberDetected = 0;
 		for (int y = 0; y < 9; y++) {
 			for (int x = 0; x < 9; x++) {
 				if (validPositions[y][x] == 0)
@@ -395,13 +378,9 @@ public class Sudoku {
 					return false; // backtracking
 				}
 				updateMapPoint(sudokuArray, x, y, number, validPositions);
-				numberDetected++;
 				changed = true;
 			}
 		}
-
-		// System.out.println("Col Hidden single detected : " + numberDetected);
-
 		return changed;
 	}
 
